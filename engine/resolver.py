@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import logging
 
+from astropy.time import Time
+from astroquery.jplhorizons import Horizons
+from astroquery.simbad import Simbad
+
 from .config import cfg
 
 log = logging.getLogger(__name__)
@@ -32,8 +36,8 @@ NAIF_IDS: dict[str, str] = {
     "uranus": "799",
     "neptune": "899",
     "pluto": "999",
-    "ceres": "1",
-    "vesta": "4",
+    "ceres": "2000001",
+    "vesta": "2000004",
     "io": "501",
     "europa": "502",
     "ganymede": "503",
@@ -71,6 +75,8 @@ async def resolve(
     Raises:
         ValueError: If object cannot be resolved
     """
+    import asyncio
+
     if category not in CATEGORIES:
         raise ValueError(f"Invalid category '{category}'. Must be one of: {CATEGORIES}")
 
@@ -87,25 +93,24 @@ async def resolve(
         ),
     }
 
-    # FIXME: Implement a fallback strategy for external call failures.
+    loop = asyncio.get_running_loop()
+
     if category in ("planet", "comet", "asteroid"):
-        return _resolve_horizons(target, observer_location)
+        return await loop.run_in_executor(None, _resolve_horizons, target, observer_location)
 
     if category in ("star", "deep_sky"):
-        return _resolve_simbad(target)
+        return await loop.run_in_executor(None, _resolve_simbad, target)
 
     # category == "auto": try Simbad first, fall back to Horizons
     try:
-        return _resolve_simbad(target)
+        return await loop.run_in_executor(None, _resolve_simbad, target)
     except ValueError:
         log.info(f"Simbad failed for '{target}', trying Horizons")
-        return _resolve_horizons(target, observer_location)
+        return await loop.run_in_executor(None, _resolve_horizons, target, observer_location)
 
 
 def _resolve_horizons(target: str, observer_location: dict) -> tuple[float, float, str]:
     """Resolve via JPL Horizons. Works for planets, comets, asteroids."""
-    from astropy.time import Time
-    from astroquery.jplhorizons import Horizons
 
     # Use NAIF ID if available to avoid ambiguity
     # for ~15 most common ambiguous query names
@@ -118,7 +123,7 @@ def _resolve_horizons(target: str, observer_location: dict) -> tuple[float, floa
             location=observer_location,
             epochs=Time.now().jd,
         )
-        eph = obj.ephemerides()
+        eph = obj.ephemerides()  # type: ignore[operator]
         ra = float(eph["RA"][0])
         dec = float(eph["DEC"][0])
         log.info(f"Horizons resolved '{target}': RA={ra:.4f} Dec={dec:.4f}")
@@ -130,7 +135,6 @@ def _resolve_horizons(target: str, observer_location: dict) -> tuple[float, floa
 
 def _resolve_simbad(target: str) -> tuple[float, float, str]:
     """Resolve via Simbad. Works for stars, nebulae, galaxies, clusters."""
-    from astroquery.simbad import Simbad
 
     try:
         result = Simbad.query_object(target)
