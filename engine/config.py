@@ -49,9 +49,6 @@ class SolverConfig:
     fov_estimate_deg: float = field(
         default_factory=lambda: float(os.getenv("CCE_SOLVER_FOV_ESTIMATE", "15.0"))
     )
-    magnitude_limit: float = field(
-        default_factory=lambda: float(os.getenv("CCE_SOLVER_MAG_LIMIT", "7.0"))
-    )
 
 
 @dataclass(frozen=True)

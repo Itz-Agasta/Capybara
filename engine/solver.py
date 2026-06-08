@@ -10,6 +10,20 @@ from .config import cfg
 
 log = logging.getLogger(__name__)
 
+_t3 = None  # Cached tetra3 instance (lazy-loaded)
+
+
+def _get_tetra3():
+    """Lazy-load tetra3 to avoid import at module level."""
+    global _t3
+    if _t3 is None:
+        try:
+            import tetra3
+        except ImportError:
+            raise RuntimeError("tetra3 not installed")
+        _t3 = tetra3.Tetra3()  # Loads database once
+    return _t3
+
 
 @dataclass
 class SolveResult:
@@ -58,13 +72,10 @@ def solve(
 # TODO: Add ASTAP fallback if tetra3 proves unreliable in practice
 def _solve_tetra3(image: np.ndarray) -> SolveResult:
     """Plate solve using tetra3 star matching."""
-    try:
-        import tetra3
-    except ImportError:
-        raise RuntimeError("tetra3 not installed: pip install tetra3")
+    import tetra3
 
     t0 = time.perf_counter()
-    t3 = tetra3.Tetra3()  # Uses default database included with package
+    t3 = _get_tetra3()
 
     # Normalise image to uint8 for tetra3
     img_norm = _normalise(image)
