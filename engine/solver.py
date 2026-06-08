@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 
@@ -60,40 +59,41 @@ def solve(
 def _solve_tetra3(image: np.ndarray) -> SolveResult:
     """Plate solve using tetra3 star matching."""
     try:
-        import tetra3  # type: ignore
+        import tetra3
     except ImportError:
         raise RuntimeError("tetra3 not installed: pip install tetra3")
 
-    db_path = Path(cfg.solver.database_path)
-    if not db_path.exists():
-        raise RuntimeError(
-            f"tetra3 database not found at {db_path}. Run: python -m engine.build_db first."
-        )
-
     t0 = time.perf_counter()
-    t3 = tetra3.Tetra3(str(db_path))
+    t3 = tetra3.Tetra3()  # Uses default database included with package
 
     # Normalise image to uint8 for tetra3
     img_norm = _normalise(image)
 
-    result = t3.solve_from_image(
-        img_norm,
+    # Extract star centroids, then solve (both accept numpy arrays)
+    centroids = tetra3.get_centroids_from_image(img_norm)
+    if len(centroids) < 4:
+        raise RuntimeError(f"Too few stars detected ({len(centroids)}), need at least 4")
+
+    result = t3.solve_from_centroids(
+        centroids,
+        size=img_norm.shape[:2],
         fov_estimate=cfg.solver.fov_estimate_deg,
         fov_max_error=0.5,
         return_matches=True,
     )
     elapsed_ms = (time.perf_counter() - t0) * 1000
 
-    if result is None or result.get("RA") is None:
+    if result is None or result.get("RA") is None:  # type: ignore[index]
         raise RuntimeError("tetra3 failed to plate solve image")
 
+    # tetra3's return type annotations are wrong, using type-ignores :(
     solve = SolveResult(
-        ra=float(result["RA"]),
-        dec=float(result["Dec"]),
-        roll=float(result.get("Roll", 0)),
-        fov=float(result.get("FOV", cfg.solver.fov_estimate_deg)),
-        stars_matched=len(result.get("Matches", [])),
-        confidence=float(result.get("Prob", 0.95)),
+        ra=float(result["RA"]),  # type: ignore[index]
+        dec=float(result["Dec"]),  # type: ignore[index]
+        roll=float(result.get("Roll", 0)),  # type: ignore[index]
+        fov=float(result.get("FOV", cfg.solver.fov_estimate_deg)),  # type: ignore[index]
+        stars_matched=len(result.get("Matches", [])),  # type: ignore[index]
+        confidence=float(result.get("Prob", 0.95)),  # type: ignore[index]
         solve_time_ms=round(elapsed_ms, 1),
         backend="tetra3",
     )
