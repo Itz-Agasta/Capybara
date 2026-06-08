@@ -72,7 +72,10 @@ def solve(
 # TODO: Add ASTAP fallback if tetra3 proves unreliable in practice
 def _solve_tetra3(image: np.ndarray) -> SolveResult:
     """Plate solve using tetra3 star matching."""
-    import tetra3
+    try:
+        import tetra3
+    except ImportError:
+        raise RuntimeError("tetra3 not installed: pip install tetra3")
 
     t0 = time.perf_counter()
     t3 = _get_tetra3()
