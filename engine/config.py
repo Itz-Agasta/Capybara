@@ -45,9 +45,20 @@ class ObserverConfig:
 
 
 @dataclass(frozen=True)
+class SolverConfig:
+    fov_estimate_deg: float = field(
+        default_factory=lambda: float(os.getenv("CCE_SOLVER_FOV_ESTIMATE", "15.0"))
+    )
+    magnitude_limit: float = field(
+        default_factory=lambda: float(os.getenv("CCE_SOLVER_MAG_LIMIT", "7.0"))
+    )
+
+
+@dataclass(frozen=True)
 class EngineConfig:
     simulation: SimulationConfig = field(default_factory=SimulationConfig)
     observer: ObserverConfig = field(default_factory=ObserverConfig)
+    solver: SolverConfig = field(default_factory=SolverConfig)
 
 
 cfg = EngineConfig()
