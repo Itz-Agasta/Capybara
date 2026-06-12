@@ -1,0 +1,10 @@
+[package]
+name = "pulsar-solver"
+version = "0.1.0"
+edition = "2024"
+description = "Plate solving — hint bypass + tetra3"
+
+[dependencies]
+pulsar-core = { path = "../core" }
+tetra3 = "0.7"
+ndarray = "0.16"

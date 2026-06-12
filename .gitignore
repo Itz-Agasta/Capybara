@@ -26,8 +26,9 @@ next-env.d.ts
 .DS_Store
 
 # Logs
-*.log
+# Rust
+target/
 
-# IDEs
-.vscode/
-.zed/
+ # IDEs
+ .vscode/
+ .zed/

@@ -1,0 +1,8 @@
+[workspace]
+resolver = "3"
+members = [
+    "pulsar",
+    "pulsar/crates/core",
+    "pulsar/crates/solver",
+    "pulsar/crates/api",
+]
