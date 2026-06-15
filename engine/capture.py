@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import json
 import logging
-import math
 
-import httpx
 import numpy as np
 
+from . import stellarium
 from .config import cfg
 
 log = logging.getLogger(__name__)
@@ -28,37 +26,17 @@ async def capture_frame(frame_index: int = 0) -> tuple[np.ndarray, tuple[float, 
 async def _capture_stellarium() -> tuple[np.ndarray, tuple[float, float]]:
     """
     Stellarium Remote Control API (enable under Plugins -> Remote Control).
-    GET /api/main/view returns a J2000 direction vector (not RA/Dec directly).
-    We convert the 3D unit vector to RA/Dec using atan2/asin.
 
     In simulation mode we use the Stellarium view coords directly as the
     plate solve result -- skipping tetra3. The calibration loop maths are
     identical; only the image source changes.
     """
-    url = f"{cfg.simulation.url}/api/main/view"
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            data = resp.json()
+        ra_deg, dec_deg = await stellarium.get_view()
+        log.info(f"Stellarium view: RA={ra_deg:.4f} Dec={dec_deg:.4f}")
 
-            # Stellarium returns a 3D unit vector in J2000 frame as a JSON string
-            # e.g. "[-0.521, 0.107, -0.870]" -- convert to RA/Dec
-            j2000_raw = data.get("j2000", data)
-            if isinstance(j2000_raw, str):
-                j2000_raw = json.loads(j2000_raw)
-            x, y, z = float(j2000_raw[0]), float(j2000_raw[1]), float(j2000_raw[2])
-
-            ra_rad = math.atan2(y, x)
-            dec_rad = math.asin(max(-1.0, min(1.0, z)))
-            ra_deg = math.degrees(ra_rad) % 360
-            dec_deg = math.degrees(dec_rad)
-
-            log.info(f"Stellarium view: RA={ra_deg:.4f}° Dec={dec_deg:.4f}°")
-
-            # Generate synthetic star-field image for visual authenticity
-            image = _synthetic_starfield(ra_deg, dec_deg)
-            return image, (ra_deg, dec_deg)
+        image = _synthetic_starfield(ra_deg, dec_deg)
+        return image, (ra_deg, dec_deg)
 
     except Exception as exc:
         raise RuntimeError(f"Cannot reach Stellarium at {cfg.simulation.url}: {exc}") from exc
@@ -91,7 +69,7 @@ def _synthetic_starfield(ra: float, dec: float) -> np.ndarray:
     return img
 
 
-# Real hardware -- INDI camer
+# Real hardware -- INDI camera
 # TODO: This will be built when moving to real hardware.
 def _capture_indi(frame_index: int) -> np.ndarray:
     """
