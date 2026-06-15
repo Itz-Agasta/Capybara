@@ -72,4 +72,3 @@ async def _signal_esp32(ra_deg: float, dec_deg: float) -> None:
     #     "dec_deg": dec_deg,
     # }
     log.warning("Suchetan will implement this")
-    raise NotImplementedError("Suchetannnnnnnnnnnnnnnnnnn")

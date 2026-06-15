@@ -44,8 +44,8 @@ async def slew(ra_deg: float, dec_deg: float) -> None:
             data={"j2000": json.dumps(vec)},
         )
         if resp.status_code not in (200, 204):
-            log.warning(
-                f"Stellarium POST /api/main/view returned {resp.status_code}: {resp.text[:200]}"
+            raise RuntimeError(
+                f"Stellarium POST /api/main/view failed ({resp.status_code}): {resp.text[:200]}"
             )
 
     log.info(f"Stellarium slew → RA={ra_deg:.4f}° Dec={dec_deg:.4f}°")
